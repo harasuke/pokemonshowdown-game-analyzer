@@ -1,0 +1,11 @@
+{
+    "/replay": {
+        "target": "https://replay.pokemonshowdown.com",
+        "secure": false,
+        "changeOrigin": true,
+        "pathRewrite": {
+            "^/replay": ""
+        },
+        "logLevel": "debug"
+    }
+}
