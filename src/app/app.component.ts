@@ -8,7 +8,7 @@ import {
   UntypedFormGroup
 } from '@angular/forms';
 import { filter, forkJoin, map, take } from 'rxjs';
-import { cloneDeep } from 'lodash';
+import { cloneDeep, result } from 'lodash';
 import { GameStats, PlayerData, PlayerTeam, PokemonData } from './core/interfaces';
 import { GameData } from './core/interfaces/game-data.interface';
 
@@ -159,9 +159,22 @@ export class AppComponent {
   }
 
   getTurnOnField(pkmnName: string, pkmnData: PokemonData, battleLog: string[]) {
-    return battleLog
-      .slice(battleLog.findIndex((row) => row.includes('|turn|1')))
-      .filter((row) => row.includes('|turn|') || row.includes(pkmnName)).length;
+    let turns = 0;
+    let read = false;
+    let stays = false;
+    battleLog.forEach((line) => {
+      if (line.includes('|start')) { read = true }
+      if (line.includes('|win|')) { read = false }
+      if (read && (line.includes(pkmnData.aliases[0]) || line.includes(pkmnData.aliases[1]))) {
+        stays = true;
+      }
+      if (line.includes('|turn|') && stays) {
+        turns +=1;
+        stays=false;
+      }
+    });
+
+    return turns;
   }
 
   getOverallUtility(pkmnName: string, pkmnData: PokemonData, battleLog: string[]): GameStats {
