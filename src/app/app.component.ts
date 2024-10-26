@@ -171,11 +171,13 @@ export class AppComponent {
       .map((row, idx) => ({ row, idx }))
       .filter((row) => moveRegex.test(row.row));
     let totalDamage = 0;
+    let totalKills = 0;
     console.log('moves done', movesDone);
     movesDone.forEach(({row: move, idx: moveIndex}) => {
       // battleLog.filter((row, rowIndex) => row === move);
       // const rowIndexWithMove = battleLog.findIndex((row) => row === move);
       const rowIndexWithMove = moveIndex;
+      // if (move.includes('[still]')) return;
       console.log('analyzing row>', move, ' with rowIndex', rowIndexWithMove);
       const whoIsDamaged = battleLog[rowIndexWithMove].split('|')[4];
       const pkmnNameWithPlayerN = battleLog[rowIndexWithMove].split('|')[2];
@@ -212,30 +214,37 @@ export class AppComponent {
             battleLog.slice(0, rowIndexWithMove)
           );
           console.log('damaged in spread', _whoIsDamaged, ' with previous health: ', prevHealth);
-          totalDamage = this.calculateDamage(
+          let dmgkillData = this.calculateDamage(
+            totalKills,
             totalDamage,
             _whoIsDamaged,
             prevHealth,
             battleLog,
             rowIndexWithMove
           );
+          totalDamage = dmgkillData.dmg;
+          totalKills = dmgkillData.kills;
         });
       } else {
-        totalDamage = this.calculateDamage(
+        let dmgkillData = this.calculateDamage(
+          totalKills,
           totalDamage,
           whoIsDamaged,
           whoIsDamagedPrevHealth,
           battleLog,
           rowIndexWithMove
         );
+        totalDamage = dmgkillData.dmg;
+        totalKills = dmgkillData.kills;
       }
 
       console.log('damage shoudl be', totalDamage);
     });
-    return { damageDone: totalDamage };
+    return { damageDone: totalDamage, kills: totalKills};
   }
 
   private calculateDamage(
+    kills: number,
     totalDamage: number,
     whoIsDamaged: string,
     whoIsDamagedPrevHealth: number,
@@ -248,14 +257,14 @@ export class AppComponent {
      */
     const rowIndexWhenAttackFinished = battleLog
       .slice(rowIndexWithMove + 1)
-      .findIndex((row) => row.includes('|move|'));
+      .findIndex((row) => row.includes('|move|') || row.includes('|win|'));
     const whereToSearchForDamage = battleLog.slice(
       rowIndexWithMove,
       rowIndexWithMove + rowIndexWhenAttackFinished + 1
     );
     console.log('searching in rows', whereToSearchForDamage);
     const previousHealth = whereToSearchForDamage
-      .filter((row) => row.includes('|-damage|') && row.split('|')[2] == whoIsDamaged)
+      .filter((row) => row.includes('|-damage|') && row.split('|')[2] == whoIsDamaged && !row.split('|')[4]?.includes('[from]'))
       .map((row) => {
         console.log('view health drop', row.split('|').pop());
         return row.split('|').pop();
@@ -267,9 +276,10 @@ export class AppComponent {
          * Il danno multi-attack ha ucciso il pokemon e quindi vuol dire che ha fatto tutta la vita rimasta.
          */
         if (healthRemaining?.includes('fnt')) {
-          return whoIsDamagedPrevHealth;
+          kills += 1;
+          return { dmg: whoIsDamagedPrevHealth, kills: kills };
         }
-        return Number(healthRemaining?.split('/')[0]);
+        return { dmg: Number(healthRemaining?.split('/')[0]), kills: kills };
       });
     // .map(damage => {
 
@@ -284,13 +294,13 @@ export class AppComponent {
     // });
     console.log('mmhh', previousHealth);
     if (previousHealth.length > 1) {
-      totalDamage += previousHealth.pop()! - previousHealth[0]!;
+      totalDamage += previousHealth.pop()!.dmg! - previousHealth[0]!.dmg!;
       // previousHealth.reduce((acc, dmg) => acc + dmg, totalDamage);
     } else if (previousHealth.length === 1) {
-      if (whoIsDamagedPrevHealth === previousHealth[0]) totalDamage += whoIsDamagedPrevHealth;
-      else totalDamage += whoIsDamagedPrevHealth - previousHealth[0];
+      if (whoIsDamagedPrevHealth === previousHealth[0].dmg) totalDamage += whoIsDamagedPrevHealth;
+      else totalDamage += whoIsDamagedPrevHealth - previousHealth[0].dmg;
     }
-    return totalDamage;
+    return { dmg: totalDamage, kills: kills };
   }
 
   private searchForPreviousHealth(whoIsDamaged: string, battleLog: string[]): number {
