@@ -12,5 +12,6 @@ export interface GameStats {
     offensiveness?: number,
     supportivness?: number,
     damageDone?: number,
-    kills?: number
+    kills?: number,
+    turnsOnField?: number
 }

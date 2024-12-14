@@ -83,32 +83,45 @@ export class AppComponent {
     const p2name = battleLog.find((row) => row.includes('|player|p2'))?.split('|')[3] ?? undefined;
     if (p1name === undefined || p2name === undefined) return;
 
-    let p1pkmn: PlayerTeam = battleLog
-      .filter((row) => row.includes('|poke|p1'))
-      .map((row) => row.split('|')[3])
-      .reduce((acc: any, curr: string) => {
-        acc[curr] = {
-          aliases: [curr],
-          turnsOnField: 0,
-          kills: 0,
-          supportMoves: 0,
-          overallUtility: {}
-        };
-        return acc;
-      }, {});
-    let p2pkmn: PlayerTeam = battleLog
-      .filter((row) => row.includes('|poke|p2'))
-      .map((row) => row.split('|')[3])
-      .reduce((acc: any, curr: string) => {
-        acc[curr] = {
-          aliases: [curr],
-          turnsOnField: 0,
-          kills: 0,
-          supportMoves: 0,
-          overallUtility: {}
-        };
-        return acc;
-      }, {});
+    let p1pkmn:PlayerTeam | undefined = undefined;
+    let p2pkmn:PlayerTeam | undefined = undefined;
+    if (this.players() == null || this.players()![p1name] == undefined) {
+      p1pkmn = battleLog
+        .filter((row) => row.includes('|poke|p1'))
+        .map((row) => row.split('|')[3])
+        .reduce((acc: any, curr: string) => {
+          acc[curr] = {
+            aliases: [curr],
+            turnsOnField: 0,
+            kills: 0,
+            supportMoves: 0,
+            overallUtility: {}
+          };
+          return acc;
+        }, {});
+    }
+    if (this.players() == null || this.players()![p2name] == undefined) {
+      p2pkmn = battleLog
+        .filter((row) => row.includes('|poke|p2'))
+        .map((row) => row.split('|')[3])
+        .reduce((acc: any, curr: string) => {
+          acc[curr] = {
+            aliases: [curr],
+            turnsOnField: 0,
+            kills: 0,
+            supportMoves: 0,
+            overallUtility: {}
+          };
+          return acc;
+        }, {});
+    }
+    
+    if (p1pkmn == undefined) {
+      p1pkmn = this.players()![p1name]['team'];
+    }
+    if (p2pkmn == undefined) {
+      p2pkmn = this.players()![p2name]['team'];
+    }
     p1pkmn = this.elaboratePokemonData(p1pkmn, battleLog, gameUrl);
     p2pkmn = this.elaboratePokemonData(p2pkmn, battleLog, gameUrl);
 
@@ -148,7 +161,6 @@ export class AppComponent {
     if (!!pkmnSurname) pkmnData['aliases'].push(pkmnSurname);
     console.log('START ANALYSIS OF: ', pkmnData.aliases[1] ?? pkmnData.aliases[0]);
     const gameUrlId: string = gameUrl.split('/').pop()!.split('.log')[0];
-    pkmnData.turnsOnField = this.getTurnOnField(pkmnName, pkmnData, battlelog);
     pkmnData.overallUtility[gameUrlId] = this.getOverallUtility(
       pkmnData.aliases[1] ?? pkmnData.aliases[0],
       pkmnData,
@@ -179,6 +191,7 @@ export class AppComponent {
 
   getOverallUtility(pkmnName: string, pkmnData: PokemonData, battleLog: string[]): GameStats {
     // const moveRegex = new RegExp(`^\\|move\\|[^|]+\\|[^:]+: ${escapeRegExp(pkmnName)}`);
+    const turnsOnField = this.getTurnOnField(pkmnName, pkmnData, battleLog);
     const moveRegex = new RegExp(`^\\|move\\|[^:]+: ${escapeRegExp(pkmnName)}`);
     const movesDone = battleLog
       .map((row, idx) => ({ row, idx }))
@@ -253,7 +266,7 @@ export class AppComponent {
 
       console.log('damage shoudl be', totalDamage);
     });
-    return { damageDone: totalDamage, kills: totalKills};
+    return { damageDone: totalDamage, kills: totalKills, turnsOnField: turnsOnField };
   }
 
   private calculateDamage(

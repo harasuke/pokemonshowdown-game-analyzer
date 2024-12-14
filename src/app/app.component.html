@@ -186,7 +186,7 @@
     "
   >
     <form [formGroup]="formItem" (ngSubmit)="null">
-      <input type="text" formControlName="gameurls">
+      <textarea ngModel name="gameurls" formControlName="gameurls"></textarea>
     </form>
 
     @if(players() !== null) {
